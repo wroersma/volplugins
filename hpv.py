@@ -17,11 +17,11 @@
 # along with Volatility.  If not, see <http://www.gnu.org/licenses/>.
 #
 """
-@author:       Wyatt Roersma (NVINT)
-@codehelper:   Daniel Deneweth (NVINT)
+@author:       Wyatt Roersma (Fannie Mae)
+@codehelper:   Daniel Deneweth (Student)
 @license:      GNU General Public License 2.0 or later
 @contact:      wyattroersam@gmail.com	
-@organization: nvint.com
+@organization: wyattroersma.com
 """
 import volatility.obj as obj
 import volatility.utils as utils
