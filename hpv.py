@@ -128,48 +128,76 @@ class hpv_clipboard(taskmods.DllList):
 
 #Plugin name hpv_vmwp
 class hpv_vmwp(taskmods.DllList):      
-    """Display the Virtual Machine Process GUID for each running vm"""    
-    def render_text(self, outfd, data):	
-	#Create table header early so users know its running 
-	self.table_header(outfd, [("Name", "16"),
- 			 	  ("PID", "6"),
-  				  ("PPID", "6"),
-    				  ("Create Time", "30"),
-    				  ("GUID", "40")])
-	# basically the "data" that render_text receives is whatever the plugin's calculate() function yields or returns
-	# and in this case Dlllist.calculate() yields a list of processes
-	# so Dlllist.calculate() already takes care of creating the address space and filtering the list processes based on -p PID, -o OFFSET, or whatever ~ mhl
-	for task in data:
-	    #Check for the virtual machin worker process vmwp.exe
+    """Display the Virtual Machine Process GUID for each running vm"""
+    def unified_output(self, data):
+        return TreeGrid([("Name", str),
+                        ("PID", int),
+                        ("PPID", int),
+                        ("Create Time", str),
+                        ("GUID", str)
+                        ],
+                        self.generator(data))
+    def generator(self,data):
+        for task in data:
+            # Check for the virtual machin worker process vmwp.exe
             if str(task.ImageFileName).lower() == "vmwp.exe":
-            	#Create a dic to store data for output format 
-		records = {}
-		newVmwp = {}
-		newVmwp['Name'] = str(task.ImageFileName)
-		newVmwp['PID'] = str(task.UniqueProcessId)
-		newVmwp['PPID'] = str(task.InheritedFromUniqueProcessId)
-		newVmwp['Create Time'] = str(task.CreateTime or '')
-		newVmwp['GUID'] = ""
-            	#Process AS must be valid 
-            	process_space = task.get_process_address_space()
-		#Find Virtual Machine GUID In the vmwp.exe process
-	    	ntvmname=[("NT VIRTUAL MACHINE".encode("utf_16le"))]
-            	for address in task.search_process_memory(ntvmname):
-            		vmn = obj.Object("String", 
-            				    offset = address, 
-					    vm = process_space,
-					    encoding = "utf16", 
-					    length = 128)
-           		# Apply string sanity checks for a valid string
-                	if vmn.is_valid():
-				vmguid = str(vmn)
-				#Get rid of NT VIRTUAL MACHINE text
-				vmwpguid = vmguid[-36:]
-				newVmwp['GUID'] = vmwpguid
+                # Process AS must be valid
+                process_space = task.get_process_address_space()
+                # Find Virtual Machine GUID In the vmwp.exe process
+                ntvmname=[("NT VIRTUAL MACHINE".encode("utf_16le"))]
+                for address in task.search_process_memory(ntvmname):
+                    vmn = obj.Object("String",
+                                     offset = address,
+                                     vm = process_space,
+                                     encoding = "utf16",
+                                     length = 128)
+                    # Apply string sanity checks for a valid string
+                    if vmn.is_valid():
+                        vmguid = str(vmn)
+                        # Get rid of NT VIRTUAL MACHINE text
+                        vmwpguid = vmguid[-36:]
 
-		# Print out Virtual Machine Worker Process information plus the identified GUID
-		self.table_row(outfd, newVmwp['Name'],
-			 	      newVmwp['PID'],
-				      newVmwp['PPID'],
-				      newVmwp['Create Time'],
-				      newVmwp['GUID'])
+                # Print out Virtual Machine Worker Process information plus the identified GUID
+                yield(0, [str(task.ImageFileName),
+                          int(task.UniqueProcessId),
+                          int(task.InheritedFromUniqueProcessId),
+                          str(task.CreateTime or ''),
+                          str(vmwpguid),
+                          ])
+
+#    def render_text(self, outfd, data):
+#        # Create table header early so users know its running
+#        self.table_header(outfd, [("Name", "16"),
+#                                  ("PID", "6"),
+#                                  ("PPID", "6"),
+#                                  ("Create Time", "30"),
+#                                  ("GUID", "40")])
+        # basically the "data" that render_text receives is whatever the plugin's calculate() function yields or returns
+        #  and in this case Dlllist.calculate() yields a list of processes
+        # so Dlllist.calculate() already takes care of creating the address space and filtering the list
+        # processes based on -p PID, -o OFFSET, or whatever ~ mhl
+#        for task in data:
+#            #Check for the virtual machin worker process vmwp.exe
+#            if str(task.ImageFileName).lower() == "vmwp.exe":
+#                # Process AS must be valid
+#                process_space = task.get_process_address_space()
+#                # Find Virtual Machine GUID In the vmwp.exe process
+#                ntvmname=[("NT VIRTUAL MACHINE".encode("utf_16le"))]
+#                for address in task.search_process_memory(ntvmname):
+#                    vmn = obj.Object("String",
+#                                     offset = address,
+#                                     vm = process_space,
+#                                     encoding = "utf16",
+#                                     length = 128)
+#                    # Apply string sanity checks for a valid string
+#                    if vmn.is_valid():
+#                        vmguid = str(vmn)
+#                        # Get rid of NT VIRTUAL MACHINE text
+#                        vmwpguid = vmguid[-36:]
+#
+#               # Print out Virtual Machine Worker Process information plus the identified GUID
+#                self.table_row(outfd, str(task.ImageFileName),
+#                               str(task.UniqueProcessId),
+#                               str(task.InheritedFromUniqueProcessId),
+#                               str(task.CreateTime or ''),
+#                               str(vmwpguid))
